@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string
+    //   - email: string (required, email format)
+    //   - photoURL: string
+    //   - role: string (required, enum: user, collector, admin)
+    //   - greenPoints: number
+    //   - totalEWasteRecycled: number
+    //   - totalCO2Saved: number
+    //   - createdAt: timestamp
+    //
+    // Collection: pickups
+    // Document ID: {pickupId}
+    // Fields:
+    //   - userId: string (required)
+    //   - category: string (required)
+    //   - condition: string
+    //   - brand: string
+    //   - model: string
+    //   - year: number
+    //   - weight: number
+    //   - accessories: list
+    //   - photos: list
+    //   - address: string
+    //   - location: map (lat, lng)
+    //   - floor: string
+    //   - hasLift: bool
+    //   - status: string (required, enum: pending, accepted, arrived, picked_up, completed, cancelled)
+    //   - estimatedPayout: number
+    //   - actualPayout: number
+    //   - collectorId: string
+    //   - scheduledTime: timestamp
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "anushkakhurape1@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isCollector() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'collector';
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['user', 'collector', 'admin'];
+    }
+
+    function isValidPickup(data) {
+      return data.keys().hasAll(['userId', 'category', 'status', 'location', 'createdAt']) &&
+             data.userId is string &&
+             data.category is string &&
+             data.status in ['pending', 'accepted', 'arrived', 'picked_up', 'completed', 'cancelled'] &&
+             data.location is map &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                      (isOwner(userId) && request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                      (isOwner(userId) && request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /pickups/{pickupId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.collectorId || isAdmin() || isCollector());
+      allow create: if isAuthenticated() && isValidPickup(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && isValidPickup(request.resource.data) && 
+                      (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.collectorId || isCollector() || isAdmin());
+    }
+  }
+}

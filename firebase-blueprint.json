@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and impact stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "collector", "admin"] },
+        "greenPoints": { "type": "number" },
+        "totalEWasteRecycled": { "type": "number" },
+        "totalCO2Saved": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "PickupRequest": {
+      "title": "Pickup Request",
+      "description": "Details of an e-waste pickup request",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string" },
+        "condition": { "type": "string" },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "number" },
+        "weight": { "type": "number" },
+        "accessories": { "type": "array", "items": { "type": "string" } },
+        "photos": { "type": "array", "items": { "type": "string" } },
+        "address": { "type": "string" },
+        "location": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } },
+        "floor": { "type": "string" },
+        "hasLift": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "arrived", "picked_up", "completed", "cancelled"] },
+        "estimatedPayout": { "type": "number" },
+        "actualPayout": { "type": "number" },
+        "collectorId": { "type": "string" },
+        "scheduledTime": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "category", "status", "location", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/pickups/{pickupId}": {
+      "schema": "PickupRequest",
+      "description": "Pickup requests"
+    }
+  }
+}
